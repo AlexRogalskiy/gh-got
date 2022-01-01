@@ -1,30 +1,45 @@
-'use strict';
-const got = require('got');
+import process from 'node:process';
+import got from 'got';
 
 const getRateLimit = headers => ({
-	limit: parseInt(headers['x-ratelimit-limit'], 10),
-	remaining: parseInt(headers['x-ratelimit-remaining'], 10),
-	reset: new Date(parseInt(headers['x-ratelimit-reset'], 10) * 1000)
+	limit: Number.parseInt(headers['x-ratelimit-limit'], 10),
+	remaining: Number.parseInt(headers['x-ratelimit-remaining'], 10),
+	reset: new Date(Number.parseInt(headers['x-ratelimit-reset'], 10) * 1000),
 });
 
 const create = () => got.extend({
 	prefixUrl: process.env.GITHUB_ENDPOINT || 'https://api.github.com',
 	headers: {
 		accept: 'application/vnd.github.v3+json',
-		'user-agent': 'https://github.com/sindresorhus/gh-got'
+		'user-agent': 'https://github.com/sindresorhus/gh-got',
 	},
 	responseType: 'json',
-	token: process.env.GITHUB_TOKEN,
+	context: {
+		token: process.env.GITHUB_TOKEN,
+	},
+	hooks: {
+		init: [
+			(raw, options) => {
+				// TODO: This should be fixed in Got
+				// Remove leading slashes
+				if (typeof options.url === 'string' && options.url.startsWith('/')) {
+					options.url = options.url.slice(1);
+				}
+
+				if ('token' in raw) {
+					options.context.token = raw.token;
+					delete raw.token;
+				}
+			},
+		],
+	},
 	handlers: [
 		(options, next) => {
 			// Authorization
-			if (options.token && !options.headers.authorization) {
-				options.headers.authorization = `token ${options.token}`;
+			const {token} = options.context;
+			if (token && !options.headers.authorization) {
+				options.headers.authorization = `token ${token}`;
 			}
-
-			// `options.body` -> `options.json`
-			options.json = options.body;
-			delete options.body;
 
 			// Don't touch streams
 			if (options.isStream) {
@@ -46,7 +61,7 @@ const create = () => got.extend({
 					// Nicer errors
 					if (response && response.body) {
 						error.name = 'GitHubError';
-						error.message = `${response.body.message} (${error.response.statusCode})`;
+						error.message = `${response.body.message} (${response.statusCode})`;
 					}
 
 					// Rate limit for errors
@@ -57,23 +72,14 @@ const create = () => got.extend({
 					throw error;
 				}
 			})();
-		}
+		},
 	],
-	hooks: {
-		init: [
-			options => {
-				// TODO: This should be fixed in Got
-				// Remove leading slashes
-				if (typeof options.url === 'string' && options.url.startsWith('/')) {
-					options.url = options.url.slice(1);
-				}
-			}
-		]
-	}
 });
 
-module.exports = create();
+const ghGot = create();
+
+export default ghGot;
 
 if (process.env.NODE_ENV === 'test') {
-	module.exports.recreate = create;
+	ghGot.recreate = create;
 }

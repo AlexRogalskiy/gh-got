@@ -10,8 +10,10 @@
 		"email": "sindresorhus@gmail.com",
 		"url": "https://sindresorhus.com"
 	},
+	"type": "module",
+	"exports": "./index.js",
 	"engines": {
-		"node": ">=10"
+		"node": "^14.13.1 || >=16.0.0"
 	},
 	"scripts": {
 		"test": "xo && ava"
@@ -32,12 +34,12 @@
 		"utility"
 	],
 	"dependencies": {
-		"got": "^10.5.7"
+		"got": "^12.0.0"
 	},
 	"devDependencies": {
-		"ava": "^3.0.2",
-		"get-stream": "^5.1.0",
-		"nock": "^12.0.0",
-		"xo": "^0.26.1"
+		"ava": "^3.15.0",
+		"get-stream": "^6.0.1",
+		"nock": "^13.2.1",
+		"xo": "^0.47.0"
 	}
 }
